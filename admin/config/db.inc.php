@@ -22,6 +22,9 @@ else {
 	require_once('admin/config/codes.inc.php');  
 }
 
+define('USE_ROLES', 1);
+
+
 //
 // Table Definitions - This Area must be modified for Customisation
 //
@@ -85,7 +88,7 @@ if( $use_neweditor ) {
 	$anbieter->add_row(TABLE_TEXT, 								'bu_annr', 			'BU-Anbieternr.', 0, 0, '',		array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
 	$anbieter->add_row(TABLE_TEXT, 								'foerder_annr', 	'Amtl. Gemeindeschl.',0,0, '',	array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
 	$anbieter->add_row(TABLE_TEXT, 								'fu_annr', 			'FU-Anbieternr.', 0, 0, '',		array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
-	$anbieter->add_row(TABLE_TEXT, 								'azwv_annr', 		'AZWV-Anbieternr.', 0, 0,'', 	array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
+	$anbieter->add_row(TABLE_TEXT, 								'azwv_annr', 		'AZAV-Anbieternr.', 0, 0,'', 	array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
 	$anbieter->add_row(TABLE_ENUM,								'freigeschaltet',	'Status', 1, '1###Freigegeben###2###Gesperrt', '', array('layout.join'=>1, 'layout.descr.hide'=>1));
 	$anbieter->add_row(TABLE_INT|TABLE_EMPTYONNULL|TABLE_READONLY|TABLE_PERCENT,
 																'vollstaendigkeit',	'Vollständigkeit', 0, '0###100', 0, array('layout.defhide'=>1, 'layout.after'=>'%', 'layout.join'=>1));
@@ -125,7 +128,7 @@ if( !$use_neweditor ) {
 	$anbieter->add_row(TABLE_TEXT, 								'bu_annr', 			'BU-Anbieternummer');
 	$anbieter->add_row(TABLE_TEXT, 								'foerder_annr', 	'Amtl. Gemeindeschl.');
 	$anbieter->add_row(TABLE_TEXT, 								'fu_annr', 			'FU-Anbieternummer');
-	$anbieter->add_row(TABLE_TEXT, 								'azwv_annr', 		'AZWV-Anbieternummer');
+	$anbieter->add_row(TABLE_TEXT, 								'azwv_annr', 		'AZAV-Anbieternummer');
 }
 $anbieter->add_row(TABLE_INT|TABLE_EMPTYONNULL|TABLE_NEWSECTION,
 															'gruendungsjahr',	'Gründungsjahr', 0, '0###2200' /*0=leer, daher muss der Bereich ab dort derzeit (11/2013) erlaubt sein*/, 'Firmenporträt', array('layout.section'=>'Firmenporträt'));
@@ -148,7 +151,7 @@ $anbieter->add_row(TABLE_TEXT,								'pflege_fax',		'Pflege Fax', 0, 0, '', arr
 $anbieter->add_row(TABLE_TEXT|TABLE_URL,					'pflege_email',		'Pflege EMail', 0, 0, '', array('layout.join'=>1));
 $anbieter->add_row(TABLE_ENUM,								'pflege_weg',		'Pflegeweg ', 1,
 																				 '0######'
-																				.'1###Post###'
+																				.'1###Redaktionelle Eingabe###'
 																				.'2###EMail###'
 																				.'4###Online###'
 																				.'8###Import');
@@ -205,7 +208,7 @@ if( $use_neweditor )
 	$durchfuehrung->add_row(TABLE_TEXT, 						'wisy_dnr', 	'Wisy-Durchführungsnr.', '', '', '',		array('layout.defhide'=>2, 'layout.join'=>1, 'ctrl.size'=>'10-40'));
 	$durchfuehrung->add_row(TABLE_TEXT, 						'fu_dnr', 		'FU-Durchführungsnr.', '', '', '',			array('layout.defhide'=>2, 'layout.join'=>1, 'ctrl.size'=>'10-40'));
 	$durchfuehrung->add_row(TABLE_TEXT, 						'foerder_dnr', 	'Förder-Durchführungsnr.', '', '', '',		array('layout.defhide'=>2, 'layout.join'=>1, 'ctrl.size'=>'10-40'));
-	$durchfuehrung->add_row(TABLE_TEXT, 						'azwv_dnr', 	'AZWV-Durchführungsnr.', '', '', '',		array('layout.defhide'=>2, 'layout.join'=>1, 'ctrl.size'=>'10-40'));
+	$durchfuehrung->add_row(TABLE_TEXT, 						'azwv_dnr', 	'AZAV-Durchführungsnr.', '', '', '',		array('layout.defhide'=>2, 'layout.join'=>1, 'ctrl.size'=>'10-40'));
 }
 $durchfuehrung->add_row(TABLE_INT|TABLE_EMPTYONNULL,		'stunden',			'Stunden ', 0, '0###9999', '', array('layout.join'=>1, 'layout.descr.class'=>'e_bold'));
 $durchfuehrung->add_row(TABLE_INT|TABLE_EMPTYONNULL,		'teilnehmer',		'max. Teilnehmende', 0, '0###999', '', array('layout.join'=>1));
@@ -245,7 +248,7 @@ if( !$use_neweditor )
 	$durchfuehrung->add_row(TABLE_TEXT, 						'wisy_dnr', 	'Wisy-Durchführungsnummer');
 	$durchfuehrung->add_row(TABLE_TEXT, 						'fu_dnr', 		'FU-Durchführungsnummer');
 	$durchfuehrung->add_row(TABLE_TEXT, 						'foerder_dnr', 	'Förder-Durchführungsnummer');
-	$durchfuehrung->add_row(TABLE_TEXT, 						'azwv_dnr', 	'AZWV-Durchführungsnummer');
+	$durchfuehrung->add_row(TABLE_TEXT, 						'azwv_dnr', 	'AZAV-Durchführungsnummer');
 }
 
 
@@ -269,7 +272,7 @@ $portale->add_row(TABLE_TEXTAREA|TABLE_NEWSECTION,					'notizen',			'Journal', '
 /*** KURSE ***/
 $kurse = new Table_Def_Class(TABLE_PRIMARY|TABLE_SYNCABLE,		'kurse',			$use_neweditor? 'Angebote' : 'Kurse');
 if($use_neweditor) {
-	$kurse->add_row(TABLE_TEXT, 									'azwv_knr', 		'AZWV-Kursnr.', '','', '',		array('ctrl.size'=>'3-10-40', 'layout.defhide'=>1, 'layout.join'=>1, 'layout.defhide.tooltip'=>'weitere Verwaltungsnummern'));
+	$kurse->add_row(TABLE_TEXT, 									'azwv_knr', 		'AZAV-Kursnr.', '','', '',		array('ctrl.size'=>'3-10-40', 'layout.defhide'=>1, 'layout.join'=>1, 'layout.defhide.tooltip'=>'weitere Verwaltungsnummern'));
 	$kurse->add_row(TABLE_TEXT|TABLE_NEWSECTION,					'bu_nummer',		'BU-Kursnr.', '','', 'Kurs-IDs',	array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
 	//$kurse->add_row(TABLE_TEXT, 									'res_nummer', 		'BU-Kursnr.', '','', '',		array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
 	$kurse->add_row(TABLE_TEXT, 									'fu_knr', 		    'FU-Kursnr.', '','', '',		array('ctrl.size'=>'10-40', 'layout.defhide'=>2, 'layout.join'=>1));
@@ -302,7 +305,7 @@ if(!$use_neweditor) {
 	//$kurse->add_row(TABLE_TEXT, 									'res_nummer', 		'BU-Kursnummer', '','', '', array('layout.join'=>1));
 	$kurse->add_row(TABLE_TEXT, 									'fu_knr', 		    'FU-Kursnummer', '','', '', array('layout.join'=>1));
 	$kurse->add_row(TABLE_TEXT, 									'foerder_knr', 		'Förder-Kursnummer', '','', '', array('layout.join'=>1));
-	$kurse->add_row(TABLE_TEXT, 									'azwv_knr', 		'AZWV-Kursnummer', '','', '', array('layout.join'=>1));
+	$kurse->add_row(TABLE_TEXT, 									'azwv_knr', 		'AZAV-Kursnummer', '','', '', array('layout.join'=>1));
 }
 $kurse->add_row(TABLE_TEXTAREA|TABLE_NEWSECTION,				'notizen',			'Journal', '', '', '', array('layout.section'=>1));
 $kurse->set_trigger('config/trigger_kurse.inc.php');
@@ -350,6 +353,7 @@ $apikeys = new Table_Def_Class(0,								'apikeys',			'API-Keys');
 $apikeys->add_row(TABLE_TEXT|TABLE_LIST|TABLE_MUST,				'name',				'Name', '', '', '', array('ctrl.size'=>'10-80', 'layout.bg.class'=>'e_bglite', 'layout.descr.class'=>'e_bolder', 'ctrl.class'=>'e_bolder'));
 $apikeys->add_row(TABLE_TEXT|TABLE_LIST|TABLE_UNIQUE,			'apikey',			'persönlicher API-Key', 'wird automatisch erzeugt', '', '', array('ctrl.size'=>'25-80'));
 $apikeys->add_row(TABLE_BITFIELD|TABLE_LIST,					'flags',			'Optionen', 1+2, '1###Freigeschaltet###2###Verschlüsselte Verbindung###4###Schreibzugriff erlauben', '', array('ctrl.checkboxes'=>1));
+$apikeys->add_row(TABLE_MATTR,			                        'usergrp',  		'Zugriffsbeschränkung', 0, 'user_grp', '', array('layout.after'=>'<br>Wenn hier Gruppen eingetragen werden, können neue Datensätze nur mit diesen Gruppen erstellt werden und bestehende können nur bearbeitet/gelöscht werden, wenn sie einer der Gruppen angehören.'));
 $apikeys->add_row(TABLE_TEXTAREA|TABLE_NEWSECTION, 				'notizen', 			'Journal', '', '', '', array('layout.section'=>1));
 $apikeys->set_trigger('config/trigger_apikeys.inc.php'); 
 

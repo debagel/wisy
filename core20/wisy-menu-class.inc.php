@@ -18,7 +18,7 @@ class WISY_MENU_ITEM
 	var $level;
 	var $children;
 	
-	function WISY_MENU_ITEM($title, $url, $aparam, $level)
+	function __construct($title, $url, $aparam, $level)
 	{
 		$this->title 	= $title;
 		$this->url   	= $url;
@@ -30,8 +30,8 @@ class WISY_MENU_ITEM
 	function getHtml()
 	{
 		$liClass = '';
-		if( sizeof($this->children) ) $liClass = ' class="dir"';
-		$ret = "<li$liClass>";
+		if( sizeof($this->children) ) $liClass = ' class="dir '.($this->title == "OhneName" ? "ohneName" : "").'"';
+		elseif($this->title == "OhneName") $liClass = ' class="ohneName"';
 		
 			if( $this->url ) $ret .= '<a href="'.isohtmlspecialchars($this->url). /*convert "&" in URLs to "&amp;" in HTML*/
 									'"'.$this->aparam.'>'; 

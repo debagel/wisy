@@ -30,6 +30,67 @@ verschiedenen globalen Datenbankparametern und Handles unterscheiden
 
 
 
+// wrapper for Mysqli
+if( !@function_exists('mysql_connect') )
+{
+	function mysql_connect($host, $user, $pw, $new_link)
+	{
+		return mysqli_connect($host, $user, $pw);
+	}
+
+	function mysql_select_db($database, $link_obj)
+	{
+		$success = mysqli_select_db($link_obj, $database);
+		mysqli_query($link_obj, "SET SESSION sql_mode='';"); /* otherwise, MySQL complains about many things as missing default values and so on. sql_mode was introduced in MySQL 5.1.8 */
+		return $success;
+	}
+
+	function mysql_query($query, $link_obj)
+	{
+		return mysqli_query($link_obj, $query); // returns result_obj of class mysqli_result
+	}
+
+	function mysql_affected_rows($link_obj)
+	{
+		return mysqli_affected_rows($link_obj);
+	}
+
+	function mysql_insert_id($link_obj)
+	{
+		return mysqli_insert_id($link_obj);
+	}
+
+	function mysql_num_rows($result_obj)
+	{
+		return mysqli_num_rows($result_obj);
+	}
+
+	function mysql_fetch_assoc($result_obj)
+	{
+		return mysqli_fetch_assoc($result_obj);
+	}
+
+	function mysql_free_result($result_obj)
+	{
+		mysqli_free_result($result_obj);
+	}
+
+	function mysql_error($link_obj=null)
+	{
+		return $link_obj? mysqli_error($link_obj) : mysqli_connect_error();
+	}
+
+	function mysql_errno($link_obj=null)
+	{
+		return $link_obj? mysqli_errno($link_obj) : mysqli_connect_errno();
+	}
+}
+
+
+// PHP 7 changes the default characters set to UTF-8; we still prefer ISO-8859-1
+@ini_set('default_charset', 'ISO-8859-1');
+
+
 class DB_Sql
 {
 	// settings, changeable by the user
@@ -54,7 +115,7 @@ class DB_Sql
 	private $phys_query_id		= 0;
 	
 	// the constructor
-	function DB_Sql($flags='')
+	function __construct($flags='')
 	{
 		$this->use_phys_connection = $flags=='use_phys_connection'? true : false;
 	}

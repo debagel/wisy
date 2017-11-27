@@ -56,6 +56,9 @@ class WISY_DURCHF_CLASS
 				'tc5'	=>	array('<span class="wisyr_art_icon wisyr_art_wochenende">WE</span>',			'Wochenende'),
 				1		=>	array('<span class="wisyr_art_icon wisyr_art_bildungsurlaub">BU</span>',		'Bildungsurlaub'),
 				7721	=>	array('<span class="wisyr_art_icon wisyr_art_fernunterricht">&#9993;</span>',	'Fernunterricht'),
+				7639	=>	array('<span class="wisyr_art_icon wisyr_art_fernunterricht">WWW</span>',		'Webinar'),
+				17261	=>	array('<span class="wisyr_art_icon wisyr_art_fernunterricht">P</span>',			'Pr�senzunterricht'),
+				806441	=>	array('<span class="wisyr_art_icon wisyr_art_fernunterricht">WWW</span>',		'Webinar') // eigentl. Teleteaching = Webinar
 			);
 
 			// overwrite defaults with portal settings from img.tag
@@ -287,8 +290,13 @@ class WISY_DURCHF_CLASS
 					$ret .= " ($preishinweise_out)";
 				}
 			}
+			
+			// Auto link URLs in Preishinweis
+			$replaceURL = (strpos($ret, 'http') === FALSE) ? '<a href="http://$0" target="_blank" title="$0">$0</a>' : '<a href="$0" target="_blank" title="$0">$0</a>';
+			$ret = preg_replace('~(?:(https?)://([^\s<]+)|(www\.[^\s<]+?\.[^\s<]+))(?<![\.,:])~i', $replaceURL, $ret);
 		}
 	
+		$ret = str_replace(chr(0xE2).chr(0x82).chr(0xAC), "&euro;", str_replace(chr(128), "&euro;", html_entity_decode($ret)));
 		return $ret;
 	}
 	
@@ -609,7 +617,9 @@ class WISY_DURCHF_CLASS
 			{
 				echo '    <td class="wisyr_bemerkungen" data-title="Bemerkungen">';
 					$wiki2html =& createWisyObject('WISY_WIKI2HTML_CLASS', $this->framework);
-					echo $wiki2html->run(utf8_encode($record['bemerkungen']));
+					$bemerkungen = $record['bemerkungen'];
+					$bemerkungen = str_replace(chr(0xE2).chr(0x82).chr(0xAC), "&euro;", str_replace(chr(128), "&euro;", $bemerkungen));
+					echo $wiki2html->run(utf8_encode($bemerkungen));
 				echo ' </td>' . "\n";
 			}
 		}

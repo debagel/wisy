@@ -236,8 +236,18 @@ function login_check()
 {
 	global $site;
 
+	// if a role-confirmation screen was printed, the user already entered the password successfully; read it from the session in this case
+	if( isset($_REQUEST['role_confirm_ok']) ) {
+		$_REQUEST['enter_password'] = strval($_SESSION['g_role_confirm_login_credential_pw']);
+	}
+	else if( isset($_REQUEST['role_confirm_cancel']) ) {
+		unset($_REQUEST['enter_subsequent']);
+	}
+	unset($_SESSION['g_role_confirm_login_credential_pw']);
+
+	// get loginname/password from the request
 	$enter_loginname = $_REQUEST['enter_loginname']; 
-	$enter_password = $_REQUEST['enter_password'];  
+	$enter_password = $_REQUEST['enter_password'];
 	
 	require_lang('lang/login');
 
@@ -271,32 +281,35 @@ function login_check()
 	//
 	// ENVIRONMENT CHECK, part 2: things that can be changed by the user
 	//
-	$missing_features = array();
-	
-	if( !isset($_REQUEST['enter_js']) || $_REQUEST['enter_js']!=1 )
+	if( !isset($_REQUEST['enter_skip_env_tests']) ) 
 	{
-		$missing_features[] = 'JavaScript';
-	}
+		$missing_features = array();
+	
+		if( !isset($_REQUEST['enter_js']) || $_REQUEST['enter_js']!=1 )
+		{
+			$missing_features[] = 'JavaScript';
+		}
 
-	if( !isset($_COOKIE[session_name()]) )
-	{
-		$missing_features[] = 'Cookies';
-	}
+		if( !isset($_COOKIE[session_name()]) )
+		{
+			$missing_features[] = 'Cookies';
+		}
 	
-	if( strval($_REQUEST['enter_displaynoneform1'])!='works1'
-	 || strval($_REQUEST['enter_displaynoneform2'])!='works2'
-	 ||  isset($_REQUEST['enter_displaynoneform3'])
-	 || strval($_REQUEST['enter_displaynoneform4'])!='works4'
-	 || strval($_REQUEST['enter_displaynoneform5'])!='works5' )
-	{
-		$missing_features[] = 'SubmitInvisibleFormElements'; //  this feature is missing in some older Opera versions, however, always check this!
-	}
+		if( strval($_REQUEST['enter_displaynoneform1'])!='works1'
+		 || strval($_REQUEST['enter_displaynoneform2'])!='works2'
+		 ||  isset($_REQUEST['enter_displaynoneform3'])
+		 || strval($_REQUEST['enter_displaynoneform4'])!='works4'
+		 || strval($_REQUEST['enter_displaynoneform5'])!='works5' )
+		{
+			$missing_features[] = 'SubmitInvisibleFormElements'; //  this feature is missing in some older Opera versions, however, always check this!
+		}
 	
-	if( sizeof($missing_features) )
-	{
-		$site->msgAdd(htmlconstant('_LOGIN_FEATUREMISSING', implode(', ', $missing_features)), 'e');
-		login_screen();
-		exit();
+		if( sizeof($missing_features) )
+		{
+			$site->msgAdd(htmlconstant('_LOGIN_FEATUREMISSING', implode(', ', $missing_features)), 'e');
+			login_screen();
+			exit();
+		}
 	}
 	
 	//
@@ -405,7 +418,7 @@ function login_check()
 	//
 	// login as the given user
 	//
-	$db->query("SELECT id, loginname, name, last_login, last_login_error, num_login_errors FROM user WHERE loginname='" .addslashes($enter_loginnameas). "'");
+	$db->query("SELECT id, loginname, name, last_login, last_login_error, num_login_errors, msg_to_user FROM user WHERE loginname='" .addslashes($enter_loginnameas). "'");
 	if( !$db->next_record() ) {
 		$site->msgAdd(htmlconstant('_LOGIN_ERR'));
 		
@@ -430,11 +443,35 @@ function login_check()
 		$db_num_login_errors= $db->f('num_login_errors');
 		$db_last_login		= $db->f('last_login');
 	}
+
+	$user_about_to_log_in = $db->f('id');
+	
+	//
+	// check, if the user needs to confirm a new text
+	//
+	if( defined('USE_ROLES') )
+	{
+		$db3 = new DB_Admin;
+		$db3->query("SELECT r.text_to_confirm, u.settings FROM user u LEFT JOIN user_roles r ON r.id=u.attr_role WHERE u.id=".$user_about_to_log_in);
+		if( $db3->next_record() ) {
+			$text_to_confirm = $db3->fs('text_to_confirm');
+			$temp_settings = regLoadFromDb__($db3->fs('settings'));
+			if( $text_to_confirm )
+			{
+				$md5_to_confirm = md5($text_to_confirm);
+				if( strval($temp_settings['role.confirmed']) !== strval($md5_to_confirm) ) { // regGet() does not yet work!
+					require_once('roleconfirm.inc.php');
+					roleconfirm_check($user_about_to_log_in); // the function may call exit()
+					$db_num_login_errors = 0;
+				}
+			}
+		}
+	}	
 	
 	//		
 	// get common values to session
 	//
-	$_SESSION['g_session_userid'] = $db->f('id');
+	$_SESSION['g_session_userid'] = $user_about_to_log_in;
 	$_SESSION['g_session_userloginname'] = $db->fs('loginname');
 	
 	$logwriter->log('user', $_SESSION['g_session_userid'], $_SESSION['g_session_userid'], 'login');
@@ -446,6 +483,7 @@ function login_check()
 	if( !$username ) {
 		$username = $_SESSION['g_session_userloginname'];
 	}
+	$msg_to_user = $db->fs('msg_to_user');
 
 	//
 	// make settings non-editable if logged in as another user 
@@ -473,8 +511,12 @@ function login_check()
 		$site->msgAdd("\n\n$msg\n\n", 'i');
 	}
 
+	if( $msg_to_user ) {
+		$site->msgAdd("\n\n$msg_to_user\n\n", 'i');
+	}
+
 		// DEPRECATED
-			$site->msgAdd("\n\n" . '<b>Neuer Editor:</b> Unter &quot;Einstellungen / Ansicht&quot; steht Ihnen ab sofort ein neuer, modernerer Editor zur Verfügung. <a href="https://b2b.kursportal.info/index.php?title=Neuer_Editor" target="_blank">Weitere Informationen...</a>' . "\n\n", 'i');
+		// $site->msgAdd("\n\n" . '<b>Neuer Editor:</b> Unter &quot;Einstellungen / Ansicht&quot; steht Ihnen ab sofort ein neuer, modernerer Editor zur Verfügung. <a href="https://b2b.kursportal.info/index.php?title=Neuer_Editor" target="_blank">Weitere Informationen...</a>' . "\n\n", 'i');
 		// DEPRECATED
 
 	if( regGet('settings.editable', 1) && $db_num_login_errors ) { 
@@ -495,6 +537,12 @@ function login_check()
 		$site->msgAdd($msgsync, $msgtype);
 	}
 	
+	//
+	// save some data from role confirmation (we cannot do this in roleconfirm_check() as the user is not set up there and eg. regSet() does not work)
+	//
+	if( isset($GLOBALS['role_just_confirmed']) ) {
+		roleconfirm_after_login($_SESSION['g_session_userid']);
+	}
 	
 	//
 	// goto desired page
