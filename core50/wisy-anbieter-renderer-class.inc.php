@@ -608,7 +608,10 @@ class WISY_ANBIETER_RENDERER_CLASS
 		. 	'</p>';		
 
 		// current offers overview
-		$this->writeOffersOverview($anbieter_id, $tag_suchname);
+		if( $this->iniRead('anbieter.angebotsuebersicht', 1) )
+		{
+			$this->writeOffersOverview($anbieter_id, $tag_suchname);
+		}
 				
 		echo "\n</article><!-- /.wisy_anbieter_kursangebot -->\n\n";
 		
