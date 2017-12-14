@@ -959,124 +959,127 @@ class WISY_SEARCH_RENDERER_CLASS
 		// result out
 		// --------------------------------------------------------------------
 		
-		$searcher =& createWisyObject('WISY_INTELLISEARCH_CLASS', $this->framework);
-		$searcher->prepare($queryString);
+		// Suche und Ergebnisliste auf Startseite optional abschalten        
+		if(!(intval(trim($this->framework->iniRead('search.startseite.disable'))) && $this->framework->getPageType() == "startseite")) {
+			$searcher =& createWisyObject('WISY_INTELLISEARCH_CLASS', $this->framework);
+			$searcher->prepare($queryString);
 		
-		echo $this->framework->replacePlaceholders( $this->framework->iniRead('spalten.above', '') );
+			echo $this->framework->replacePlaceholders( $this->framework->iniRead('spalten.above', '') );
 		
-		echo '<div id="wisy_resultarea" class="' .$this->framework->getAllowFeedbackClass(). '">';
+			echo '<div id="wisy_resultarea" class="' .$this->framework->getAllowFeedbackClass(). '">';
 		
-			if( $_GET['show'] == 'tags' )
-			{
-				$this->renderTagliste($queryString);
-			}
-			else if( $searcher->ok() )
-			{
-				$info = $searcher->getInfo();
-				if( $info['show'] == 'kurse' )
+				if( $_GET['show'] == 'tags' )
 				{
-					$this->renderKursliste($searcher, $queryString, $offset);
+					$this->renderTagliste($queryString);
+				}
+				else if( $searcher->ok() )
+				{
+					$info = $searcher->getInfo();
+					if( $info['show'] == 'kurse' )
+					{
+						$this->renderKursliste($searcher, $queryString, $offset);
+					}
+					else
+					{
+						$this->renderAnbieterliste($searcher, $queryString, $offset);
+					}
 				}
 				else
 				{
-					$this->renderAnbieterliste($searcher, $queryString, $offset);
-				}
-			}
-			else
-			{
-				$info  = $searcher->getInfo();
-				$error = $info['error'];
-				switch( $error['id'] )
-				{
-					case 'tag_not_found':
-						echo '<p class="wisy_topnote">Ihre Suche nach &quot;' .htmlspecialchars(utf8_encode(trim($queryString, ', '))). '&quot; liefert keine Treffer.</p>' . "\n";
-						break;
-				
-					case 'field_not_found':
-						echo '<p class="wisy_topnote">Das zu durchsuchende Feld &quot;'.htmlspecialchars(utf8_encode($error['field'])).'&quot; ist unbekannt oder falsch geschrieben.</p>' . "\n";
-						break;
-				
-					case 'missing_fulltext':
-						echo '<p class="wisy_topnote">Bitte geben Sie die zu suchenden Volltextwörter hinter <em>Volltext:</em> an.</p>' . "\n";
-						break;
-				
-					case 'bad_location':
-						echo 	'<p class="wisy_topnote">'
-							.		' Die Ortsangabe <em>bei:'.htmlspecialchars(utf8_encode($error['field'])).'</em> konnte nicht lokalisiert werden (Status='.htmlspecialchars(utf8_encode($error['status'])).').'
-							.	'</p>' . "\n";
-						break;
-						
-					case 'inaccurate_location':
-						// see http://code.google.com/intl/de/apis/maps/documentation/reference.html#GGeoAddressAccuracy
-						$accuracies = array('Unbekannt', 'Land', 'Region', 'Kreis', 'Ortschaft', 'PLZ', 'Strasse', 'Kreuzung', 'Adresse', 'Grundstück');
-						$ist_accuracy = intval($error['ist_accuracy']);
-						$soll_accuracy = intval($error['soll_accuracy']);
-						echo 	'<p class="wisy_topnote">'
-							.		' Die Ortsangabe <em>bei:'.htmlspecialchars(utf8_encode($error['field'])).'</em> wurde als '
-							.		' wurde als <em>'.$accuracies[$ist_accuracy].' ('.$ist_accuracy.')</em> klassifiziert und ist damit zu ungenau. '
-							.		' Erforderlich ist mindestens die Genauigkeit <em>'.$accuracies[$soll_accuracy].'</em>. '
-							.	'</p>' . "\n";
-						break;
-				
-					case 'bad_km':
-						echo '<p class="wisy_topnote">Fehlerhafte <em>km:</em>-Angabe. Geben Sie hier die Entfernung zur Adresse in ganzen Kilometern an im Bereich von 1-'.$error['max_km'].' an. Wenn Sie diese Angabe weglassen, wird der Standardwert <em>km:'.$error['default_km'].'</em> verwendet.</p>' . "\n";
-						break;
-
-					case 'km_without_bei':
-						echo '<p class="wisy_topnote">Die Angabe von <em>km:</em> ist nur in Kombination mit <em>bei:</em> gültig. Für eine einfache Eingabe der richtigen Werte, verwenden Sie bitte die <em>Erweiterte Suche</em>.</p>' . "\n";
-						break;
-				
-					default:
-						echo '<p class="wisy_topnote">Fehler in der Suchabfrage (interner Fehler <em>'.$error['id'].'</em>)</p>' . "\n";
-						break;
-				}
-			}
-
-			if( $this->framework->editSessionStarted )
-			{
-				$loggedInAnbieterId = $this->framework->getEditAnbieterId();
-				
-				$editor =& createWisyObject('WISY_EDIT_RENDERER_CLASS', $this->framework);
-				$adminAnbieterUserIds = $editor->getAdminAnbieterUserIds();
-				
-				// get a list of all offers that are not "gesperrt"
-				$temp = '0';
-				$titles = array();
-				$db = new DB_Admin;
-				$db->query("SELECT id, titel FROM kurse WHERE anbieter=$loggedInAnbieterId AND user_created IN (".implode(',',$adminAnbieterUserIds).") AND freigeschaltet!=2;");
-				while( $db->next_record() )
-				{ 
-					$currId = intval($db->f8('id')); $titles[ $currId ] = $db->f8('titel'); $temp .= ', ' . $currId;
-				}
-				
-				// compare the 'offers that are not "gesperrt"' against the ones that are in the search index
-				$liveIds = array();
-				$db->query("SELECT kurs_id FROM x_kurse WHERE kurs_id IN($temp)");
-				while( $db->next_record() )
-				{
-					$liveIds[ $db->f8('kurs_id') ] = 1;
-				}
-				
-				// show 'offers that are not "gesperrt"' which are _not_ in the search index (eg. just created offers) below the normal search result
-				echo '<p><span class="wisy_edittoolbar" title="Um einen neuen Kurs hinzuzufügen, klicken Sie oben auf &quot;Neuer Kurs&quot;">Kurse in Vorbereitung:</span>&nbsp; ';
-					$out = 0;
-					reset( $titles );
-					while( list($currId, $currTitel) = each($titles) )
+					$info  = $searcher->getInfo();
+					$error = $info['error'];
+					switch( $error['id'] )
 					{
-						if( !$liveIds[ $currId ] )
-						{
-							echo $out? ' &ndash; ' : '';
-							echo '<a href="k'.$currId.'">' . htmlspecialchars($currTitel) . '</a>';
+						case 'tag_not_found':
+							echo '<p class="wisy_topnote">Ihre Suche nach &quot;' .htmlspecialchars(utf8_encode(trim($queryString, ', '))). '&quot; liefert keine Treffer.</p>' . "\n";
+							break;
+				
+						case 'field_not_found':
+							echo '<p class="wisy_topnote">Das zu durchsuchende Feld &quot;'.htmlspecialchars(utf8_encode($error['field'])).'&quot; ist unbekannt oder falsch geschrieben.</p>' . "\n";
+							break;
+				
+						case 'missing_fulltext':
+							echo '<p class="wisy_topnote">Bitte geben Sie die zu suchenden Volltextwörter hinter <em>Volltext:</em> an.</p>' . "\n";
+							break;
+				
+						case 'bad_location':
+							echo 	'<p class="wisy_topnote">'
+								.		' Die Ortsangabe <em>bei:'.htmlspecialchars(utf8_encode($error['field'])).'</em> konnte nicht lokalisiert werden (Status='.htmlspecialchars(utf8_encode($error['status'])).').'
+								.	'</p>' . "\n";
+							break;
+						
+						case 'inaccurate_location':
+							// see http://code.google.com/intl/de/apis/maps/documentation/reference.html#GGeoAddressAccuracy
+							$accuracies = array('Unbekannt', 'Land', 'Region', 'Kreis', 'Ortschaft', 'PLZ', 'Strasse', 'Kreuzung', 'Adresse', 'Grundstück');
+							$ist_accuracy = intval($error['ist_accuracy']);
+							$soll_accuracy = intval($error['soll_accuracy']);
+							echo 	'<p class="wisy_topnote">'
+								.		' Die Ortsangabe <em>bei:'.htmlspecialchars(utf8_encode($error['field'])).'</em> wurde als '
+								.		' wurde als <em>'.$accuracies[$ist_accuracy].' ('.$ist_accuracy.')</em> klassifiziert und ist damit zu ungenau. '
+								.		' Erforderlich ist mindestens die Genauigkeit <em>'.$accuracies[$soll_accuracy].'</em>. '
+								.	'</p>' . "\n";
+							break;
+				
+						case 'bad_km':
+							echo '<p class="wisy_topnote">Fehlerhafte <em>km:</em>-Angabe. Geben Sie hier die Entfernung zur Adresse in ganzen Kilometern an im Bereich von 1-'.$error['max_km'].' an. Wenn Sie diese Angabe weglassen, wird der Standardwert <em>km:'.$error['default_km'].'</em> verwendet.</p>' . "\n";
+							break;
 
-							$out++; 
-						}
+						case 'km_without_bei':
+							echo '<p class="wisy_topnote">Die Angabe von <em>km:</em> ist nur in Kombination mit <em>bei:</em> gültig. Für eine einfache Eingabe der richtigen Werte, verwenden Sie bitte die <em>Erweiterte Suche</em>.</p>' . "\n";
+							break;
+				
+						default:
+							echo '<p class="wisy_topnote">Fehler in der Suchabfrage (interner Fehler <em>'.$error['id'].'</em>)</p>' . "\n";
+							break;
 					}
-					if( $out == 0 ) echo '<i title="Um einen neuen Kurs hinzuzufügen, klicken Sie oben auf &quot;Neuer Kurs&quot;">keine</i>';
-					//echo ' &ndash; <a href="edit?action=ek&amp;id=0">Neuer Kurs...</a>';
-				echo '</p>';
-			}
+				}
+
+				if( $this->framework->editSessionStarted )
+				{
+					$loggedInAnbieterId = $this->framework->getEditAnbieterId();
+				
+					$editor =& createWisyObject('WISY_EDIT_RENDERER_CLASS', $this->framework);
+					$adminAnbieterUserIds = $editor->getAdminAnbieterUserIds();
+				
+					// get a list of all offers that are not "gesperrt"
+					$temp = '0';
+					$titles = array();
+					$db = new DB_Admin;
+					$db->query("SELECT id, titel FROM kurse WHERE anbieter=$loggedInAnbieterId AND user_created IN (".implode(',',$adminAnbieterUserIds).") AND freigeschaltet!=2;");
+					while( $db->next_record() )
+					{ 
+						$currId = intval($db->f8('id')); $titles[ $currId ] = $db->f8('titel'); $temp .= ', ' . $currId;
+					}
+				
+					// compare the 'offers that are not "gesperrt"' against the ones that are in the search index
+					$liveIds = array();
+					$db->query("SELECT kurs_id FROM x_kurse WHERE kurs_id IN($temp)");
+					while( $db->next_record() )
+					{
+						$liveIds[ $db->f8('kurs_id') ] = 1;
+					}
+				
+					// show 'offers that are not "gesperrt"' which are _not_ in the search index (eg. just created offers) below the normal search result
+					echo '<p><span class="wisy_edittoolbar" title="Um einen neuen Kurs hinzuzufügen, klicken Sie oben auf &quot;Neuer Kurs&quot;">Kurse in Vorbereitung:</span>&nbsp; ';
+						$out = 0;
+						reset( $titles );
+						while( list($currId, $currTitel) = each($titles) )
+						{
+							if( !$liveIds[ $currId ] )
+							{
+								echo $out? ' &ndash; ' : '';
+								echo '<a href="k'.$currId.'">' . htmlspecialchars($currTitel) . '</a>';
+
+								$out++; 
+							}
+						}
+						if( $out == 0 ) echo '<i title="Um einen neuen Kurs hinzuzufügen, klicken Sie oben auf &quot;Neuer Kurs&quot;">keine</i>';
+						//echo ' &ndash; <a href="edit?action=ek&amp;id=0">Neuer Kurs...</a>';
+					echo '</p>';
+				}
 		
-		echo '</div>';
+			echo '</div>';
+		}
 		
 		echo $this->framework->replacePlaceholders( $this->framework->iniRead('spalten.below', '') );
 		
